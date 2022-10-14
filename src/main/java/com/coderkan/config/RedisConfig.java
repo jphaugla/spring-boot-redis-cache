@@ -18,8 +18,6 @@ import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSeriali
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
-import redis.clients.jedis.Jedis;
-
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -31,8 +29,8 @@ import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactor
 @EnableCaching
 public class RedisConfig {
 
-	@Autowired
-	private CacheManager cacheManager;
+	// @Autowired
+	// private CacheManager cacheManager;
 
 	@Value("${spring.redis.host}")
 	private String redisHost;
@@ -65,9 +63,10 @@ public class RedisConfig {
 	@PostConstruct
 	public void clearCache() {
 		System.out.println("In Clear Cache");
-		Jedis jedis = new Jedis(redisHost, redisPort, 1000);
+	/*	Jedis jedis = new Jedis(redisHost, redisPort, 1000);
 		jedis.flushAll();
 		jedis.close();
+	 */
 	}
 
 }
