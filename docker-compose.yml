@@ -35,3 +35,12 @@ services:
     depends_on:
       - db
       - cache
+  insight:
+    image: "redislabs/redisinsight:latest"
+    container_name: insight
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./redisinsight:/db
+    depends_on:
+      - cache
