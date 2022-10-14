@@ -1,0 +1,5 @@
+export SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/postgres
+export SPRING_DATASOURCE_USERNAME=postgres
+export SPRING_DATASOURCE_PASSWORD=ekoloji
+export SPRING_REDIS_HOST=localhost
+export SPRING_REDIS_PORT=6379

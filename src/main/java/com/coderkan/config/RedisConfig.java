@@ -17,6 +17,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
+import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
@@ -26,11 +27,10 @@ import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactor
 //@Profile("!dev")
 @Configuration
 @AutoConfigureAfter(RedisAutoConfiguration.class)
+@Slf4j
 @EnableCaching
 public class RedisConfig {
 
-	// @Autowired
-	// private CacheManager cacheManager;
 
 	@Value("${spring.redis.host}")
 	private String redisHost;
@@ -38,12 +38,15 @@ public class RedisConfig {
 	@Value("${spring.redis.port}")
 	private int redisPort;
 
+
 	@Bean
 	public RedisTemplate<String, Serializable> redisCacheTemplate(LettuceConnectionFactory redisConnectionFactory) {
 		RedisTemplate<String, Serializable> template = new RedisTemplate<>();
 		template.setKeySerializer(new StringRedisSerializer());
 		template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
 		template.setConnectionFactory(redisConnectionFactory);
+		log.info("redis host " + redisHost);
+		log.info("redis port " + String.valueOf(redisPort));
 		return template;
 	}
 
