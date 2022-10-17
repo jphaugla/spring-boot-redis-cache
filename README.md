@@ -237,6 +237,7 @@ services:
 * Build Java Jar.
 
 ```shell
+ $ source scripts/setEnv.sh
  $ mvn clean package
 ```
 
