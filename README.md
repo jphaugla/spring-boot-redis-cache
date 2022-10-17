@@ -8,7 +8,7 @@ Context:
   - [**Redis Configuration**](#redis-configuration)
   - [**Spring Service**](#spring-service)
   - [**Docker & Docker Compose**](#docker-docker-compose)
-  - [**Build & Run Application**](#build-run-application)
+  - [**Build & Run Application**](#build--run-application)
   - [**Endpoints with Swagger**](#endpoints-with-swagger)
   - [**Demo**](#demo)
 
@@ -21,18 +21,13 @@ When you send any request to get all customers or customer by id, you will wait 
 
 ## Maven Dependencies
 
-
+I removed jedis since lettuce is also being used.
 ```xml
 <dependency>
 	<groupId>org.springframework.boot</groupId>
 	<artifactId>spring-boot-starter-data-redis</artifactId>
 </dependency>
 
-<dependency>
-	<groupId>redis.clients</groupId>
-	<artifactId>jedis</artifactId>
-</dependency>
-		
 ```
 
 ## Redis Configuration
@@ -81,7 +76,7 @@ public class RedisConfig {
 ## Spring Service
 
 Spring Boot Customer Service Implementation will be like below class.
-I used Spring Boot Cache @Annotaions for caching.
+I used Spring Boot Cache @Annotations for caching.
 
 These are:
 
@@ -90,7 +85,7 @@ These are:
 * `@Caching`
 * `@CachceConfig`
 	
-
+Updated this code on the CacheEvict as it did not work. [Stackoverflow link](https://stackoverflow.com/questions/33083206/cacheevict-with-key-id-throws-nullpointerexception)
 ```java
 @Service
 @CacheConfig(cacheNames = "customerCache")

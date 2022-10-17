@@ -33,7 +33,7 @@ public class SpringFoxConfiguration extends WebMvcConfigurationSupport {
 				.version("0.0.1")
 				//.license("Apache License Version 2.0")
 				//.licenseUrl("https://www.apache.org/licenses/LICENSE-2.0\"")
-				.contact(new Contact("Erkan Güzeler", "https://github.com/coderkan", "erkanguzeler@gmail.com"))
+				.contact(new Contact("Jason Haugland", "https://github.com/jphaugla", "jasonhaugland@gmail.com"))
 				.build();
 	}
 

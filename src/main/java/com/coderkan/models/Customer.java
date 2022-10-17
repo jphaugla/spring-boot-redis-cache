@@ -21,6 +21,7 @@ public class Customer {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column(name = "id", unique = true)
+
 	private long id;
 
 	private String name;

@@ -21,20 +21,25 @@ public class CustomerServiceImpl implements CustomerService {
 	@Autowired
 	private CustomerRepository customerRepository;
 
-	@Cacheable(cacheNames = "customers")
+	@Cacheable(cacheNames = "customers", key="#id")
 	@Override
 	public List<Customer> getAll() {
 		waitSomeTime();
 		return this.customerRepository.findAll();
 	}
 
-	@CacheEvict(cacheNames = "customers", allEntries = true)
+	@CacheEvict(cacheNames = "customers", key = "#id", condition = "#id!=null")
 	@Override
 	public Customer add(Customer customer) {
 		return this.customerRepository.save(customer);
 	}
 
-	@CacheEvict(cacheNames = "customers", allEntries = true)
+	//  this causes all the entries to be deleted if any entries are updated
+	// @CacheEvict(cacheNames = "customers", allEntries = true)
+	//   this works but is kind of complex.  Here customer is the java class object (not customers)
+	@CacheEvict(cacheNames = "customers", key="#customer?.id", condition="#customer?.id!=null")
+	//  this seems logical, but it doesn't delete the redis cached record
+	// @CacheEvict(cacheNames = "customers", key = "#id", condition = "#id!=null")
 	@Override
 	public Customer update(Customer customer) {
 		Optional<Customer> optCustomer = this.customerRepository.findById(customer.getId());
@@ -50,14 +55,15 @@ public class CustomerServiceImpl implements CustomerService {
 		return this.customerRepository.save(repCustomer);
 	}
 
-	@Caching(evict = { @CacheEvict(cacheNames = "customer", key = "#id"),
-			@CacheEvict(cacheNames = "customers", allEntries = true) })
+	@Caching(evict = { @CacheEvict(cacheNames = "customers", key = "#id", condition = "#id!=null")})
 	@Override
 	public void delete(long id) {
-		this.customerRepository.deleteById(id);
+		if(this.customerRepository.existsById(id)) {
+			this.customerRepository.deleteById(id);
+		}
 	}
 
-	@Cacheable(cacheNames = "customer", key = "#id", unless = "#result == null")
+	@Cacheable(cacheNames = "customers", key = "#id", unless = "#result == null")
 	@Override
 	public Customer getCustomerById(long id) {
 		waitSomeTime();

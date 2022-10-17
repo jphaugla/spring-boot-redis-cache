@@ -1,6 +1,7 @@
 package com.coderkan.config;
 
 import java.io.Serializable;
+import java.time.Duration;
 
 import javax.annotation.PostConstruct;
 
@@ -38,6 +39,13 @@ public class RedisConfig {
 	@Value("${spring.redis.port}")
 	private int redisPort;
 
+	@Value("${spring.cache.redis.time-to-live}")
+	private int cacheTtl;
+
+	@Value("${spring.cache.redis.cache-null-values}")
+	private boolean cacheNull;
+
+
 
 	@Bean
 	public RedisTemplate<String, Serializable> redisCacheTemplate(LettuceConnectionFactory redisConnectionFactory) {
@@ -54,10 +62,17 @@ public class RedisConfig {
 	public CacheManager cacheManager(RedisConnectionFactory factory) {
 		RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig();
 		RedisCacheConfiguration redisCacheConfiguration = config
+				// .entryTtl(Duration.ofMinutes(cacheTtl))
 				.serializeKeysWith(
 						RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
 				.serializeValuesWith(RedisSerializationContext.SerializationPair
-						.fromSerializer(new GenericJackson2JsonRedisSerializer()));
+						.fromSerializer(new GenericJackson2JsonRedisSerializer()))
+				;
+		if (cacheNull) {
+			redisCacheConfiguration.getAllowCacheNullValues();
+		} else {
+			redisCacheConfiguration.disableCachingNullValues();
+		}
 		RedisCacheManager redisCacheManager = RedisCacheManager.builder(factory).cacheDefaults(redisCacheConfiguration)
 				.build();
 		return redisCacheManager;
