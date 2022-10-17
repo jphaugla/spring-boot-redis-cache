@@ -35,41 +35,55 @@ I removed jedis since lettuce is also being used.
 ```java
 @Configuration
 @AutoConfigureAfter(RedisAutoConfiguration.class)
+@Slf4j
 @EnableCaching
 public class RedisConfig {
 
-	@Autowired
-	private CacheManager cacheManager;
 
-	@Value("${spring.redis.host}")
-	private String redisHost;
+    @Value("${spring.redis.host}")
+    private String redisHost;
 
-	@Value("${spring.redis.port}")
-	private int redisPort;
+    @Value("${spring.redis.port}")
+    private int redisPort;
 
-	@Bean
-	public RedisTemplate<String, Serializable> redisCacheTemplate(LettuceConnectionFactory redisConnectionFactory) {
-		RedisTemplate<String, Serializable> template = new RedisTemplate<>();
-		template.setKeySerializer(new StringRedisSerializer());
-		template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
-		template.setConnectionFactory(redisConnectionFactory);
-		return template;
-	}
+    @Value("${spring.cache.redis.time-to-live}")
+    private int cacheTtl;
 
-	@Bean
-	public CacheManager cacheManager(RedisConnectionFactory factory) {
-		RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig();
-		RedisCacheConfiguration redisCacheConfiguration = config
-				.serializeKeysWith(
-						RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
-				.serializeValuesWith(RedisSerializationContext.SerializationPair
-						.fromSerializer(new GenericJackson2JsonRedisSerializer()));
-		RedisCacheManager redisCacheManager = RedisCacheManager.builder(factory).cacheDefaults(redisCacheConfiguration)
-				.build();
-		return redisCacheManager;
-	}
+    @Value("${spring.cache.redis.cache-null-values}")
+    private boolean cacheNull;
 
-}
+
+
+    @Bean
+    public RedisTemplate<String, Serializable> redisCacheTemplate(LettuceConnectionFactory redisConnectionFactory) {
+        RedisTemplate<String, Serializable> template = new RedisTemplate<>();
+        template.setKeySerializer(new StringRedisSerializer());
+        template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
+        template.setConnectionFactory(redisConnectionFactory);
+        log.info("redis host " + redisHost);
+        log.info("redis port " + String.valueOf(redisPort));
+        return template;
+    }
+
+    @Bean
+    public CacheManager cacheManager(RedisConnectionFactory factory) {
+        RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig();
+        RedisCacheConfiguration redisCacheConfiguration = config
+                .entryTtl(Duration.ofMinutes(cacheTtl))
+                .serializeKeysWith(
+                        RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(new GenericJackson2JsonRedisSerializer()))
+                ;
+        if (cacheNull) {
+            redisCacheConfiguration.getAllowCacheNullValues();
+        } else {
+            redisCacheConfiguration.disableCachingNullValues();
+        }
+        RedisCacheManager redisCacheManager = RedisCacheManager.builder(factory).cacheDefaults(redisCacheConfiguration)
+                .build();
+        return redisCacheManager;
+    }
 ```
 
 
@@ -87,67 +101,62 @@ These are:
 	
 Updated this code on the CacheEvict as it did not work. [Stackoverflow link](https://stackoverflow.com/questions/33083206/cacheevict-with-key-id-throws-nullpointerexception)
 ```java
+
 @Service
 @CacheConfig(cacheNames = "customerCache")
 public class CustomerServiceImpl implements CustomerService {
 
-	@Autowired
-	private CustomerRepository customerRepository;
+    @Autowired
+    private CustomerRepository customerRepository;
 
-	@Cacheable(cacheNames = "customers")
-	@Override
-	public List<Customer> getAll() {
-		waitSomeTime();
-		return this.customerRepository.findAll();
-	}
+    @Cacheable(cacheNames = "customers", key="#id")
+    @Override
+    public List<Customer> getAll() {
+        waitSomeTime();
+        return this.customerRepository.findAll();
+    }
 
-	@CacheEvict(cacheNames = "customers", allEntries = true)
-	@Override
-	public Customer add(Customer customer) {
-		return this.customerRepository.save(customer);
-	}
+    @CacheEvict(cacheNames = "customers", key = "#id", condition = "#id!=null")
+    @Override
+    public Customer add(Customer customer) {
+        return this.customerRepository.save(customer);
+    }
 
-	@CacheEvict(cacheNames = "customers", allEntries = true)
-	@Override
-	public Customer update(Customer customer) {
-		Optional<Customer> optCustomer = this.customerRepository.findById(customer.getId());
-		if (!optCustomer.isPresent())
-			return null;
-		Customer repCustomer = optCustomer.get();
-		repCustomer.setName(customer.getName());
-		repCustomer.setContactName(customer.getContactName());
-		repCustomer.setAddress(customer.getAddress());
-		repCustomer.setCity(customer.getCity());
-		repCustomer.setPostalCode(customer.getPostalCode());
-		repCustomer.setCountry(customer.getCountry());
-		return this.customerRepository.save(repCustomer);
-	}
+    //  this causes all the entries to be deleted if any entries are updated
+    // @CacheEvict(cacheNames = "customers", allEntries = true)
+    //   this works but is kind of complex.  Here customer is the java class object (not customers)
+    @CacheEvict(cacheNames = "customers", key="#customer?.id", condition="#customer?.id!=null")
+    //  this seems logical, but it doesn't delete the redis cached record
+    // @CacheEvict(cacheNames = "customers", key = "#id", condition = "#id!=null")
+    @Override
+    public Customer update(Customer customer) {
+        Optional<Customer> optCustomer = this.customerRepository.findById(customer.getId());
+        if (!optCustomer.isPresent())
+            return null;
+        Customer repCustomer = optCustomer.get();
+        repCustomer.setName(customer.getName());
+        repCustomer.setContactName(customer.getContactName());
+        repCustomer.setAddress(customer.getAddress());
+        repCustomer.setCity(customer.getCity());
+        repCustomer.setPostalCode(customer.getPostalCode());
+        repCustomer.setCountry(customer.getCountry());
+        return this.customerRepository.save(repCustomer);
+    }
 
-	@Caching(evict = { @CacheEvict(cacheNames = "customer", key = "#id"),
-			@CacheEvict(cacheNames = "customers", allEntries = true) })
-	@Override
-	public void delete(long id) {
-		this.customerRepository.deleteById(id);
-	}
+    @Caching(evict = { @CacheEvict(cacheNames = "customers", key = "#id", condition = "#id!=null")})
+    @Override
+    public void delete(long id) {
+        if(this.customerRepository.existsById(id)) {
+            this.customerRepository.deleteById(id);
+        }
+    }
 
-	@Cacheable(cacheNames = "customer", key = "#id", unless = "#result == null")
-	@Override
-	public Customer getCustomerById(long id) {
-		waitSomeTime();
-		return this.customerRepository.findById(id).orElse(null);
-	}
-
-	private void waitSomeTime() {
-		System.out.println("Long Wait Begin");
-		try {
-			Thread.sleep(3000);
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
-		System.out.println("Long Wait End");
-	}
-
-}
+    @Cacheable(cacheNames = "customers", key = "#id", unless = "#result == null")
+    @Override
+    public Customer getCustomerById(long id) {
+        waitSomeTime();
+        return this.customerRepository.findById(id).orElse(null);
+    }
 ```
 
 ## Docker & Docker Compose
@@ -156,10 +165,17 @@ public class CustomerServiceImpl implements CustomerService {
 Dockerfile:
 
 ```
-FROM openjdk:8
-ADD ./target/spring-boot-redis-cache-0.0.1-SNAPSHOT.jar /usr/src/spring-boot-redis-cache-0.0.1-SNAPSHOT.jar
-WORKDIR usr/src
-ENTRYPOINT ["java","-jar", "spring-boot-redis-cache-0.0.1-SNAPSHOT.jar"]
+FROM maven:3.8.6-openjdk-18 AS build
+COPY src /usr/src/app/src
+COPY pom.xml /usr/src/app
+RUN mvn -f /usr/src/app/pom.xml clean package -DskipTests
+
+FROM openjdk:18
+ENV DEBIAN_FRONTEND noninteractive
+COPY --from=build /usr/src/app/target/spring-boot-redis-cache-0.0.1-SNAPSHOT.jar /usr/app/spring-boot-redis-cache-0.0.1-SNAPSHOT.jar
+COPY --from=build /usr/src/app/src/main/resources/runApplication.sh /usr/app/runApplication.sh
+EXPOSE 8080
+ENTRYPOINT ["/usr/app/runApplication.sh"]
 ```
 
 Docker compose file:
@@ -168,56 +184,69 @@ Docker compose file:
 docker-compose.yml
 
 ```yml
-version: '3'
+version: '3.9'
 
 services:
   db:
-    image: "postgres"
+    image: postgres
+    container_name: db
     ports:
-      - "5432:5432"
+      - '5432:5432'
     environment:
-      POSTGRES_DB: postgres
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ekoloji
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=ekoloji
   cache:
-    image: "redis"
-    ports: 
-      - "6379:6379"
+    image: redis/redis-stack:latest
+    container_name: cache
+    ports:
+      - '6379:6379'
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
       - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL
-  app:
-    build: .
-    ports:
-      - "8080:8080"
+  spring-cache:
+    image: spring-cache
+    container_name: spring-cache
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://db/postgres
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: ekoloji
-      SPRING_REDIS_HOST: cache
-      SPRING_REDIS_PORT: 6379
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/postgres
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=ekoloji
+      - SPRING_REDIS_HOST=cache
+      - SPRING_REDIS_PORT=6379
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - '8080:8080'
     depends_on:
       - db
       - cache
-```
+  insight:
+    image: "redislabs/redisinsight:latest"
+    container_name: insight
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./redisinsight:/db
+    depends_on:
+      - cache
+  ```
 
 ## Build & Run Application
 
 * Build Java Jar.
 
 ```shell
- $ mvn clean install
+ $ mvn clean package
 ```
 
 *  Docker Compose Build and Run
 
 ```shell
 $ docker-compose build --no-cache
-$ docker-compose up --force-recreate
+$ docker-compose up -d
 
 ```
-
-After running the application you can visit `http://localhost:8080`.	
 
 ## Endpoints with Swagger
 
