@@ -12,6 +12,12 @@ Context:
   - [**Endpoints with Swagger**](#endpoints-with-swagger)
   - [**Demo**](#demo)
 
+Links:
+
+  - [**Spring Boot Cache Abstraction**](https://docs.spring.io/spring-framework/docs/3.2.x/spring-framework-reference/html/cache.html)
+  - [**Stackoverflow Null Pointer Fix**](https://stackoverflow.com/questions/33083206/cacheevict-with-key-id-throws-nullpointerexception)
+  - [**Baeldung Spring Boot Cache with Redis**](https://www.baeldung.com/spring-boot-redis-cache)
+  - [**Spring Boot and Redis-SpEL/Caching**](https://ozymaxx.github.io/blog/2020/05/11/redis-springboot-2-en/)
 
 ## Getting Started
 
