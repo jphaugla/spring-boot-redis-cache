@@ -12,7 +12,7 @@ Context:
   - [**Build & Run Application**](#build--run-application)
   - [**Endpoints with Swagger**](#endpoints-with-swagger)
   - [**Proof of caching**](#proof-point-for-the-caching)
-  - [**Verify cached in redis](#verify-the-data-is-now-cached-in-redis)
+  - [**Verify cached in redis**](#verify-the-data-is-now-cached-in-redis)
   - [**Demo**](#demo)
 
 Links:
