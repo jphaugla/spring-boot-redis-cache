@@ -7,7 +7,8 @@ Context:
   - [**Maven Dependencies**](#maven-dependencies)
   - [**Redis Configuration**](#redis-configuration)
   - [**Spring Service**](#spring-service)
-  - [**Docker & Docker Compose**](#docker-docker-compose)
+  - [**Docker & Docker Compose**](#docker--docker-compose)
+  - [**Use Redisinsight**](#use-redisinsight)
   - [**Build & Run Application**](#build--run-application)
   - [**Endpoints with Swagger**](#endpoints-with-swagger)
   - [**Demo**](#demo)
@@ -18,10 +19,13 @@ Links:
   - [**Stackoverflow Null Pointer Fix**](https://stackoverflow.com/questions/33083206/cacheevict-with-key-id-throws-nullpointerexception)
   - [**Baeldung Spring Boot Cache with Redis**](https://www.baeldung.com/spring-boot-redis-cache)
   - [**Spring Boot and Redis-SpEL/Caching**](https://ozymaxx.github.io/blog/2020/05/11/redis-springboot-2-en/)
+  - [**Redisinsight**](https://redis.com/redis-enterprise/redis-insight/)
+  - [**Using Redisinsights**](https://docs.redis.com/latest/ri/using-redisinsight/)
 
 ## Getting Started
 
-In this project, I used Redis for caching with Spring Boot.
+In this project, I used Redis for caching with Spring Boot.  There are multiple docker containers:  postgres, redis, 
+redisinsight, and the spring boot application.
 When you send any request to get all customers or customer by id, you will wait 3 seconds if Redis has no related data.
 
 
@@ -255,15 +259,56 @@ $ docker-compose up -d
 
 ```
 
+## Use redisinsight
+bring up redisinsight using [link to redisinsight](https://localhost:8001)
+This [redisinsight documentation](https://docs.redis.com/latest/ri/using-redisinsight/) is helpful
+
+![redisinsight](assets/redisinsightConnection.png)
+
+When adding the database use *cache* and not *localhost* as the server name as it will resolve with the docker network
+
+## Insert some test records to get started
+```shell
+cd scripts
+./putCustomer.sh
+```
+* NOTE:  these inserted records will go into postgres but will not be cached to redis as writes are not cached
+
 ## Endpoints with Swagger
 
-
+Bring up the swagger interface as directed below
 You can see the endpoint in `http://localhost:8080/swagger-ui.html` page.
-I used Swagger for visualization endpoints.
 
+## Proof point for the caching
 
-![Endpoints](assets/endpoints.png)
+![Endpoints](assets/selectCustomersGetwithID.png)
+* Click on "customer-controller"
+* Click on "GET" for the second customer API call (circled above) that gets customers by ID. 
+* Click on *Try it out* (also circled)
 
+![ClickExecute](assets/ClickExecute.png)
+* Enter *1* for the id and click the large blue Execute button
+
+![results](assets/resultsOfEnter.png)
+* These results should occur
+
+### Verify the data is now cached in redis
+* go back to redisinsight browser
+* select correct database connection
+
+![browse](assets/redisinsightBrowse.png)
+* Click on *Browser* on the left column below *BROWSE*
+* Click on the record called customers::1
+  * Should see the record with a TTL and all the columns as shown
+
+This demonstrates the cache is working.
+
+Can also use the API script to see the output speed difference more easily  
+(there is a purposeful delay in get from postgres for demonstration purposes) 
+```bash
+cd scripts
+./getByCustID.sh
+```
 
 ## Demo
 
