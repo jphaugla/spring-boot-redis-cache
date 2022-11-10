@@ -8,6 +8,7 @@ Context:
   - [**Redis Configuration**](#redis-configuration)
   - [**Spring Service**](#spring-service)
   - [**Docker & Docker Compose**](#docker--docker-compose)
+  - [**PostgreSQL]
   - [**Use Redisinsight**](#use-redisinsight)
   - [**Build & Run Application**](#build--run-application)
   - [**Endpoints with Swagger**](#endpoints-with-swagger)
@@ -174,7 +175,7 @@ public class CustomerServiceImpl implements CustomerService {
 ## Docker & Docker Compose
 
 
-Dockerfile:
+*Dockerfile*
 
 ```
 FROM maven:3.8.6-openjdk-18 AS build
@@ -190,10 +191,10 @@ EXPOSE 8080
 ENTRYPOINT ["/usr/app/runApplication.sh"]
 ```
 
-Docker compose file:
+*Docker compose file*
 
 
-docker-compose.yml
+*docker-compose.yml*
 
 ```yml
 version: '3.9'
@@ -268,6 +269,15 @@ This [redisinsight documentation](https://docs.redis.com/latest/ri/using-redisin
 ![redisinsight](assets/redisinsightConnection.png)
 
 When adding the database use *cache* and not *localhost* as the server name as it will resolve with the docker network
+
+## Access postgreSQL
+```bash
+docker exec -it db bash
+psql -U postgres -W
+# TIP:  find the password for the postgres database in the docker-compose file
+```
+![psql](assets/psql.png)
+* see simple psql interaction above
 
 ## Insert some test records to get started
 ```shell
