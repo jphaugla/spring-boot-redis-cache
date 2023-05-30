@@ -21,7 +21,7 @@ public class CustomerServiceImpl implements CustomerService {
 	@Autowired
 	private CustomerRepository customerRepository;
 
-	@Cacheable(cacheNames = "customers", key="#id")
+	@Cacheable(cacheNames = "customers")
 	@Override
 	public List<Customer> getAll() {
 		waitSomeTime();

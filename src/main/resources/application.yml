@@ -6,8 +6,9 @@ spring:
     show-sql: true
     properties:
       hibernate:
-        show_sql: true 
+        show_sql: true
     database: postgresql
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
                
   jackson:
     serialization:
@@ -24,13 +25,9 @@ spring:
   redis:
     host: ${SPRING_REDIS_HOST}
     port: ${SPRING_REDIS_PORT}
+    password: ${SPRING_REDIS_PASSWORD}
     timeout: 10000ms
-    lettuce:
-      pool:
-        max-active: 8
-        max-wait: -1ms
-        max-idle: 8
-        min-idle: 8
+
   cache:
     type: redis
     redis:
@@ -45,6 +42,7 @@ spring:
     url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME}
     password: ${SPRING_DATASOURCE_PASSWORD}
+    driverClassName: org.postgresql.Driver
 server:
   port: 8080
 

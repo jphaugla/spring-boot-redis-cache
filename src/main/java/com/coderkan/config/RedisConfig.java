@@ -3,9 +3,7 @@ package com.coderkan.config;
 import java.io.Serializable;
 import java.time.Duration;
 
-import javax.annotation.PostConstruct;
-
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
@@ -13,7 +11,10 @@ import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
+import org.springframework.data.redis.connection.RedisPassword;
+import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
+import org.springframework.data.redis.connection.jedis.JedisClientConfiguration;
+import org.springframework.data.redis.connection.jedis.JedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
@@ -23,7 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
-import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
+import redis.clients.jedis.JedisPoolConfig;
 
 //@Profile("!dev")
 @Configuration
@@ -34,10 +35,13 @@ public class RedisConfig {
 
 
 	@Value("${spring.redis.host}")
-	private String redisHost;
+	private String redisHostName;
 
 	@Value("${spring.redis.port}")
 	private int redisPort;
+
+	@Value("${spring.redis.password}")
+	private String redisPassword;
 
 	@Value("${spring.cache.redis.time-to-live}")
 	private int cacheTtl;
@@ -46,20 +50,38 @@ public class RedisConfig {
 	private boolean cacheNull;
 
 
-
 	@Bean
-	public RedisTemplate<String, Serializable> redisCacheTemplate(LettuceConnectionFactory redisConnectionFactory) {
+	JedisConnectionFactory jedisConnectionFactory() {
+		JedisPoolConfig poolConfig = new JedisPoolConfig();
+		poolConfig.setMaxIdle(50);
+		poolConfig.setMaxTotal(50);
+		JedisClientConfiguration.JedisClientConfigurationBuilder clientConfig = JedisClientConfiguration.builder();
+		clientConfig.usePooling().poolConfig(poolConfig);
+		JedisConnectionFactory jedisConnectionFactory;
+		RedisStandaloneConfiguration redisServerConf = new RedisStandaloneConfiguration();
+		log.info("redis host " + redisHostName);
+		log.info("redis port " + String.valueOf(redisPort));
+		redisServerConf.setHostName(redisHostName);
+		redisServerConf.setPort(redisPort);
+		if(redisPassword != null && !redisPassword.isEmpty()) {
+			log.info("redis password " + redisPassword);
+			redisServerConf.setPassword(RedisPassword.of(redisPassword));
+		}
+		jedisConnectionFactory = new JedisConnectionFactory(redisServerConf, clientConfig.build());
+		return jedisConnectionFactory;
+	}
+	@Bean
+	public RedisTemplate<String, Serializable> redisCacheTemplate(JedisConnectionFactory jedisConnectionFactory) {
 		RedisTemplate<String, Serializable> template = new RedisTemplate<>();
 		template.setKeySerializer(new StringRedisSerializer());
 		template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
-		template.setConnectionFactory(redisConnectionFactory);
-		log.info("redis host " + redisHost);
-		log.info("redis port " + String.valueOf(redisPort));
+		template.setConnectionFactory(jedisConnectionFactory);
+
 		return template;
 	}
 
 	@Bean
-	public CacheManager cacheManager(RedisConnectionFactory factory) {
+	public CacheManager cacheManager(RedisConnectionFactory redisConnectionFactory) {
 		RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig();
 		RedisCacheConfiguration redisCacheConfiguration = config
 				.entryTtl(Duration.ofMinutes(cacheTtl))
@@ -73,7 +95,7 @@ public class RedisConfig {
 		} else {
 			redisCacheConfiguration.disableCachingNullValues();
 		}
-		RedisCacheManager redisCacheManager = RedisCacheManager.builder(factory).cacheDefaults(redisCacheConfiguration)
+		RedisCacheManager redisCacheManager = RedisCacheManager.builder(redisConnectionFactory).cacheDefaults(redisCacheConfiguration)
 				.build();
 		return redisCacheManager;
 	}

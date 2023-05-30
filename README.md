@@ -8,7 +8,7 @@ Context:
   - [**Redis Configuration**](#redis-configuration)
   - [**Spring Service**](#spring-service)
   - [**Docker & Docker Compose**](#docker--docker-compose)
-  - [**PostgreSQL]
+  - [**PostgreSQL**](#access-postgresql)
   - [**Use Redisinsight**](#use-redisinsight)
   - [**Build & Run Application**](#build--run-application)
   - [**Endpoints with Swagger**](#endpoints-with-swagger)
@@ -23,6 +23,7 @@ Links:
   - [**Baeldung Spring Boot Cache with Redis**](https://www.baeldung.com/spring-boot-redis-cache)
   - [**Spring Boot and Redis-SpEL/Caching**](https://ozymaxx.github.io/blog/2020/05/11/redis-springboot-2-en/)
   - [**Redisinsight**](https://redis.com/redis-enterprise/redis-insight/)
+  - [**OpenAPI 3**](https://springdoc.org/v2/)
   - [**Using Redisinsights**](https://docs.redis.com/latest/ri/using-redisinsight/)
 
 ## Getting Started
@@ -53,50 +54,49 @@ I removed jedis since lettuce is also being used.
 public class RedisConfig {
 
 
-    @Value("${spring.redis.host}")
-    private String redisHost;
+  @Value("${spring.redis.host}")
+  private String redisHost;
 
-    @Value("${spring.redis.port}")
-    private int redisPort;
+  @Value("${spring.redis.port}")
+  private int redisPort;
 
-    @Value("${spring.cache.redis.time-to-live}")
-    private int cacheTtl;
+  @Value("${spring.cache.redis.time-to-live}")
+  private int cacheTtl;
 
-    @Value("${spring.cache.redis.cache-null-values}")
-    private boolean cacheNull;
+  @Value("${spring.cache.redis.cache-null-values}")
+  private boolean cacheNull;
 
 
+  @Bean
+  public RedisTemplate<String, Serializable> redisCacheTemplate(LettuceConnectionFactory redisConnectionFactory) {
+    RedisTemplate<String, Serializable> template = new RedisTemplate<>();
+    template.setKeySerializer(new StringRedisSerializer());
+    template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
+    template.setConnectionFactory(redisConnectionFactory);
+    log.info("redis host " + redisHost);
+    log.info("redis port " + String.valueOf(redisPort));
+    return template;
+  }
 
-    @Bean
-    public RedisTemplate<String, Serializable> redisCacheTemplate(LettuceConnectionFactory redisConnectionFactory) {
-        RedisTemplate<String, Serializable> template = new RedisTemplate<>();
-        template.setKeySerializer(new StringRedisSerializer());
-        template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
-        template.setConnectionFactory(redisConnectionFactory);
-        log.info("redis host " + redisHost);
-        log.info("redis port " + String.valueOf(redisPort));
-        return template;
+  @Bean
+  public CacheManager cacheManager(RedisConnectionFactory factory) {
+    RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig();
+    RedisCacheConfiguration redisCacheConfiguration = config
+            .entryTtl(Duration.ofMinutes(cacheTtl))
+            .serializeKeysWith(
+                    RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
+            .serializeValuesWith(RedisSerializationContext.SerializationPair
+                    .fromSerializer(new GenericJackson2JsonRedisSerializer()));
+    if (cacheNull) {
+      redisCacheConfiguration.getAllowCacheNullValues();
+    } else {
+      redisCacheConfiguration.disableCachingNullValues();
     }
-
-    @Bean
-    public CacheManager cacheManager(RedisConnectionFactory factory) {
-        RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig();
-        RedisCacheConfiguration redisCacheConfiguration = config
-                .entryTtl(Duration.ofMinutes(cacheTtl))
-                .serializeKeysWith(
-                        RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
-                .serializeValuesWith(RedisSerializationContext.SerializationPair
-                        .fromSerializer(new GenericJackson2JsonRedisSerializer()))
-                ;
-        if (cacheNull) {
-            redisCacheConfiguration.getAllowCacheNullValues();
-        } else {
-            redisCacheConfiguration.disableCachingNullValues();
-        }
-        RedisCacheManager redisCacheManager = RedisCacheManager.builder(factory).cacheDefaults(redisCacheConfiguration)
-                .build();
-        return redisCacheManager;
-    }
+    RedisCacheManager redisCacheManager = RedisCacheManager.builder(factory).cacheDefaults(redisCacheConfiguration)
+            .build();
+    return redisCacheManager;
+  }
+}
 ```
 
 
@@ -119,57 +119,58 @@ Updated this code on the CacheEvict as it did not work. [Stackoverflow link](htt
 @CacheConfig(cacheNames = "customerCache")
 public class CustomerServiceImpl implements CustomerService {
 
-    @Autowired
-    private CustomerRepository customerRepository;
+  @Autowired
+  private CustomerRepository customerRepository;
 
-    @Cacheable(cacheNames = "customers", key="#id")
-    @Override
-    public List<Customer> getAll() {
-        waitSomeTime();
-        return this.customerRepository.findAll();
-    }
+  @Cacheable(cacheNames = "customers", key = "#id")
+  @Override
+  public List<Customer> getAll() {
+    waitSomeTime();
+    return this.customerRepository.findAll();
+  }
 
-    @CacheEvict(cacheNames = "customers", key = "#id", condition = "#id!=null")
-    @Override
-    public Customer add(Customer customer) {
-        return this.customerRepository.save(customer);
-    }
+  @CacheEvict(cacheNames = "customers", key = "#id", condition = "#id!=null")
+  @Override
+  public Customer add(Customer customer) {
+    return this.customerRepository.save(customer);
+  }
 
-    //  this causes all the entries to be deleted if any entries are updated
-    // @CacheEvict(cacheNames = "customers", allEntries = true)
-    //   this works but is kind of complex.  Here customer is the java class object (not customers)
-    @CacheEvict(cacheNames = "customers", key="#customer?.id", condition="#customer?.id!=null")
-    //  this seems logical, but it doesn't delete the redis cached record
-    // @CacheEvict(cacheNames = "customers", key = "#id", condition = "#id!=null")
-    @Override
-    public Customer update(Customer customer) {
-        Optional<Customer> optCustomer = this.customerRepository.findById(customer.getId());
-        if (!optCustomer.isPresent())
-            return null;
-        Customer repCustomer = optCustomer.get();
-        repCustomer.setName(customer.getName());
-        repCustomer.setContactName(customer.getContactName());
-        repCustomer.setAddress(customer.getAddress());
-        repCustomer.setCity(customer.getCity());
-        repCustomer.setPostalCode(customer.getPostalCode());
-        repCustomer.setCountry(customer.getCountry());
-        return this.customerRepository.save(repCustomer);
-    }
+  //  this causes all the entries to be deleted if any entries are updated
+  // @CacheEvict(cacheNames = "customers", allEntries = true)
+  //   this works but is kind of complex.  Here customer is the java class object (not customers)
+  @CacheEvict(cacheNames = "customers", key = "#customer?.id", condition = "#customer?.id!=null")
+  //  this seems logical, but it doesn't delete the redis cached record
+  // @CacheEvict(cacheNames = "customers", key = "#id", condition = "#id!=null")
+  @Override
+  public Customer update(Customer customer) {
+    Optional<Customer> optCustomer = this.customerRepository.findById(customer.getId());
+    if (!optCustomer.isPresent())
+      return null;
+    Customer repCustomer = optCustomer.get();
+    repCustomer.setName(customer.getName());
+    repCustomer.setContactName(customer.getContactName());
+    repCustomer.setAddress(customer.getAddress());
+    repCustomer.setCity(customer.getCity());
+    repCustomer.setPostalCode(customer.getPostalCode());
+    repCustomer.setCountry(customer.getCountry());
+    return this.customerRepository.save(repCustomer);
+  }
 
-    @Caching(evict = { @CacheEvict(cacheNames = "customers", key = "#id", condition = "#id!=null")})
-    @Override
-    public void delete(long id) {
-        if(this.customerRepository.existsById(id)) {
-            this.customerRepository.deleteById(id);
-        }
+  @Caching(evict = {@CacheEvict(cacheNames = "customers", key = "#id", condition = "#id!=null")})
+  @Override
+  public void delete(long id) {
+    if (this.customerRepository.existsById(id)) {
+      this.customerRepository.deleteById(id);
     }
+  }
 
-    @Cacheable(cacheNames = "customers", key = "#id", unless = "#result == null")
-    @Override
-    public Customer getCustomerById(long id) {
-        waitSomeTime();
-        return this.customerRepository.findById(id).orElse(null);
-    }
+  @Cacheable(cacheNames = "customers", key = "#id", unless = "#result == null")
+  @Override
+  public Customer getCustomerById(long id) {
+    waitSomeTime();
+    return this.customerRepository.findById(id).orElse(null);
+  }
+}
 ```
 
 ## Docker & Docker Compose
@@ -264,7 +265,7 @@ $ docker-compose up -d
 
 ## Use redisinsight
 bring up redisinsight using [link to redisinsight](https://localhost:8001)
-This [redisinsight documentation](https://docs.redis.com/latest/ri/using-redisinsight/) is helpful
+This [redisinsight documentation](https://docs.redis.com/latest/ri/using-redisinsight/) is helpful  
 
 ![redisinsight](assets/redisinsightConnection.png)
 

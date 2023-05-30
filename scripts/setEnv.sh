@@ -3,3 +3,4 @@ export SPRING_DATASOURCE_USERNAME=postgres
 export SPRING_DATASOURCE_PASSWORD=ekoloji
 export SPRING_REDIS_HOST=localhost
 export SPRING_REDIS_PORT=6379
+export SPRING_REDIS_PASSWORD=jasonrocks
