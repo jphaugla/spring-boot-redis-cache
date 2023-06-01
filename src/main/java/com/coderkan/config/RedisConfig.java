@@ -112,7 +112,7 @@ public class RedisConfig {
 
 		@Bean
 		public ObservationHandler<Observation.Context> observationTextPublisher() {
-			return new ObservationTextPublisher(log::info);
+			return new ObservationTextPublisher(log::debug);
 		}
 	}
 	@Configuration(proxyBeanMethods = false)
