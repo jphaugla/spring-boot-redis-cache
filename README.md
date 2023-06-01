@@ -1,5 +1,6 @@
 # Spring Boot Redis Cache
-
+This demonstrates spring boot redis cache.  The main directory caches postgresql and the subdirectory *cassandra* similarily caches cassandra.
+The docker in the spring-cache application in the cassandra directory does not work as there is a failure in the connection to cassandra from java.  So, if running in cassandra, use the local client.  I think the issue is docker networking not working with cassandra driver.
 
 Context:
 
@@ -23,20 +24,28 @@ Links:
   - [**Baeldung Spring Boot Cache with Redis**](https://www.baeldung.com/spring-boot-redis-cache)
   - [**Spring Boot and Redis-SpEL/Caching**](https://ozymaxx.github.io/blog/2020/05/11/redis-springboot-2-en/)
   - [**Spring Caching with Redis**](https://medium.com/javarevisited/spring-caching-with-redis-dc1e3bdcc552)
+  - [**Redis Stack**](https://redis.io/docs/stack/)
   - [**Redisinsight**](https://redis.com/redis-enterprise/redis-insight/)
   - [**OpenAPI 3**](https://springdoc.org/v2/)
   - [**Using Redisinsights**](https://docs.redis.com/latest/ri/using-redisinsight/)
+  - [**Spring Data for Cassandra**](https://docs.spring.io/spring-data/cassandra/docs/current/reference/html/#cassandra.core)
+  - [**Bitnama docker container**](https://hub.docker.com/r/bitnami/cassandra/)
+  - [**Bitnam Cassandra datacenter**](https://github.com/bitnami/charts/issues/4408)
+  - [**Initialize cassandra keyspace and data**](https://gist.github.com/derlin/0d4c98f7787140805793d6268dae8440)
+  - [**Spring data cassandra setup**](https://stackoverflow.com/questions/64622251/not-able-to-connect-to-cassandra-from-spring-boot-aplication-using-spring-boot-s)
+  - [**Spring cassandra authentication**](https://stackoverflow.com/questions/64910934/cassandra-authentication-issue-after-upgrading-to-spring-boot-2-3-5-release)
+  - [**Spring cassandra CRUD example**](https://www.bezkoder.com/spring-boot-cassandra-crud/)
 
 ## Getting Started
 
 In this project, I used Redis for caching with Spring Boot.  There are multiple docker containers:  postgres, redis, 
-redisinsight, and the spring boot application.
-When you send any request to get all customers or customer by id, you will wait 3 seconds if Redis has no related data.
+redisinsight, and the spring boot application.  The subdirectory *cassandra* uses a cassandra container instead of postgres
+When you send any request to get all customers or customer by id, you will wait 3 milliseconds if Redis has no related data.
 
 
 ## Maven Dependencies
 
-I removed jedis since lettuce is also being used.
+I changed this from lettuce to jedis
 ```xml
 <dependency>
 	<groupId>org.springframework.boot</groupId>
@@ -114,64 +123,64 @@ These are:
 * `@CachceConfig`
 	
 Updated this code on the CacheEvict as it did not work. [Stackoverflow link](https://stackoverflow.com/questions/33083206/cacheevict-with-key-id-throws-nullpointerexception)
+Next, I changed this to do a cacheput on add
 ```java
+        @Cacheable
+	@Override
+	public List<Customer> getAll() {
+		waitSomeTime();
+		return this.customerRepository.findAll();
+	}
 
-@Service
-@CacheConfig(cacheNames = "customerCache")
-public class CustomerServiceImpl implements CustomerService {
+	// @CacheEvict(key = "#id", condition = "#id!=null")
+	//  Switching to a CachePut from a CacheEvict
+	@CachePut(key = "#customer.id")
+	@Override
+	public Customer add(Customer customer) {
+		log.info(" write to database");
+		return this.customerRepository.save(customer);
+	}
 
-  @Autowired
-  private CustomerRepository customerRepository;
+	//  this causes all the entries to be deleted if any entries are updated
+	// @CacheEvict(cacheNames = "customers", allEntries = true)
+	//   this works but is kind of complex.  Here customer is the java class object (not customers)
+	// @CacheEvict(key="#customer?.id", condition="#customer?.id!=null")
+	//  this seems logical, but it doesn't delete the redis cached record
+	// @CacheEvict(cacheNames = "customers", key = "#id", condition = "#id!=null")
+	@CachePut(key = "#customer.id")
+	@Override
+	public Customer update(Customer customer) {
+		Optional<Customer> optCustomer = this.customerRepository.findById(customer.getId());
+		if (!optCustomer.isPresent())
+			return null;
+		Customer repCustomer = optCustomer.get();
+		repCustomer.setName(customer.getName());
+		repCustomer.setContactName(customer.getContactName());
+		repCustomer.setAddress(customer.getAddress());
+		repCustomer.setCity(customer.getCity());
+		repCustomer.setPostalCode(customer.getPostalCode());
+		repCustomer.setCountry(customer.getCountry());
+		return this.customerRepository.save(repCustomer);
+	}
+	@CacheEvict(allEntries = true)
+	@Override
+	public void evictCache() {
+		log.info("all entries have been evicted");
+	}
+	@Caching(evict = { @CacheEvict(key = "#id", condition = "#id!=null")})
+	@Override
+	public void delete(long id) {
+		if(this.customerRepository.existsById(id)) {
+			this.customerRepository.deleteById(id);
+		}
+	}
+	@Cacheable(key = "#id", unless = "#result == null")
+	@Override
+	public Customer getCustomerById(long id) {
+		waitSomeTime();
+		return this.customerRepository.findById(id).orElse(null);
+	}
 
-  @Cacheable(cacheNames = "customers", key = "#id")
-  @Override
-  public List<Customer> getAll() {
-    waitSomeTime();
-    return this.customerRepository.findAll();
-  }
-
-  @CacheEvict(cacheNames = "customers", key = "#id", condition = "#id!=null")
-  @Override
-  public Customer add(Customer customer) {
-    return this.customerRepository.save(customer);
-  }
-
-  //  this causes all the entries to be deleted if any entries are updated
-  // @CacheEvict(cacheNames = "customers", allEntries = true)
-  //   this works but is kind of complex.  Here customer is the java class object (not customers)
-  @CacheEvict(cacheNames = "customers", key = "#customer?.id", condition = "#customer?.id!=null")
-  //  this seems logical, but it doesn't delete the redis cached record
-  // @CacheEvict(cacheNames = "customers", key = "#id", condition = "#id!=null")
-  @Override
-  public Customer update(Customer customer) {
-    Optional<Customer> optCustomer = this.customerRepository.findById(customer.getId());
-    if (!optCustomer.isPresent())
-      return null;
-    Customer repCustomer = optCustomer.get();
-    repCustomer.setName(customer.getName());
-    repCustomer.setContactName(customer.getContactName());
-    repCustomer.setAddress(customer.getAddress());
-    repCustomer.setCity(customer.getCity());
-    repCustomer.setPostalCode(customer.getPostalCode());
-    repCustomer.setCountry(customer.getCountry());
-    return this.customerRepository.save(repCustomer);
-  }
-
-  @Caching(evict = {@CacheEvict(cacheNames = "customers", key = "#id", condition = "#id!=null")})
-  @Override
-  public void delete(long id) {
-    if (this.customerRepository.existsById(id)) {
-      this.customerRepository.deleteById(id);
-    }
-  }
-
-  @Cacheable(cacheNames = "customers", key = "#id", unless = "#result == null")
-  @Override
-  public Customer getCustomerById(long id) {
-    waitSomeTime();
-    return this.customerRepository.findById(id).orElse(null);
-  }
-}
 ```
 
 ## Docker & Docker Compose
@@ -280,6 +289,14 @@ psql -U postgres -W
 ```
 ![psql](assets/psql.png)
 * see simple psql interaction above
+## Access cassandra
+This is if using the *cassandra* subdirectory
+```bash
+docker exec -it cassandra1 bash
+cqlsh -u cassandra -p jph
+use customer;
+select * from customer;
+```
 
 ## Insert some test records to get started
 ```shell

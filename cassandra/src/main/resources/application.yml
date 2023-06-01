@@ -1,0 +1,72 @@
+spring:
+
+  jackson:
+    serialization:
+      fail-on-empty-beans: false
+      FAIL_ON_EMPTY_BEANS: false
+    deserialization:
+      unwrap-root-value: false
+
+  profiles:
+    active:
+    - dev
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
+  redis:
+    host: ${SPRING_REDIS_HOST}
+    port: ${SPRING_REDIS_PORT}
+    password: ${SPRING_REDIS_PASSWORD}
+    timeout: 10000ms
+
+  cache:
+    type: redis
+    redis:
+      time-to-live: 30
+      cache-null-values: false
+      enable-statistics: true
+---
+spring:
+  data:
+    cassandra:
+      keyspace-name: customer
+      contact-points: ${SPRING_CASSANDRA_HOST}
+      port: ${SPRING_CASSANDRA_PORT}
+      username: ${SPRING_CASSANDRA_USER}
+      password: ${SPRING_CASSANDRA_PASSWORD}
+      cluster_name: ${SPRING_CASSANDRA_CLUSTER}
+      local-datacenter: ${SPRING_CASSANDRA_DATACENTER}
+server:
+  port: 8080
+
+---
+
+clear:
+  all:
+    cache:
+      fixed:
+        rate: 
+
+management:
+  health:
+    probes:
+      enabled: true
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always
+      enabled: true
+
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+    enabled-by-default: true
+
+springdoc:
+  show-actuator: true
