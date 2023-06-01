@@ -33,6 +33,7 @@ spring:
     redis:
       time-to-live: 30
       cache-null-values: false
+      enable-statistics: true
 ---
 spring:
   config: 
@@ -55,11 +56,26 @@ clear:
         rate: 
 
 management:
+  health:
+    probes:
+      enabled: true
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always
+      enabled: true
+
   endpoints:
     web:
       exposure:
-        exclude: "*"
-                  
-  endpoint:
-    shutdown:
-      enabled: true
+        include: '*'
+    enabled-by-default: true
+
+springdoc:
+  show-actuator: true

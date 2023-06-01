@@ -3,7 +3,14 @@ package com.coderkan.config;
 import java.io.Serializable;
 import java.time.Duration;
 
+import io.micrometer.observation.Observation;
+import io.micrometer.observation.ObservationHandler;
+import io.micrometer.observation.ObservationRegistry;
+import io.micrometer.observation.ObservationTextPublisher;
+import io.micrometer.observation.aop.ObservedAspect;
 import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
@@ -25,11 +32,10 @@ import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import redis.clients.jedis.JedisPoolConfig;
-
+@Slf4j
 //@Profile("!dev")
 @Configuration
 @AutoConfigureAfter(RedisAutoConfiguration.class)
-@Slf4j
 @EnableCaching
 public class RedisConfig {
 
@@ -98,6 +104,25 @@ public class RedisConfig {
 		RedisCacheManager redisCacheManager = RedisCacheManager.builder(redisConnectionFactory).cacheDefaults(redisCacheConfiguration)
 				.build();
 		return redisCacheManager;
+	}
+	@Configuration
+	public class ObservationTextPublisherConfiguration {
+
+		private static final Logger log = LoggerFactory.getLogger(ObservationTextPublisherConfiguration.class);
+
+		@Bean
+		public ObservationHandler<Observation.Context> observationTextPublisher() {
+			return new ObservationTextPublisher(log::info);
+		}
+	}
+	@Configuration(proxyBeanMethods = false)
+	public class ObserveConfiguration {
+
+		@Bean
+		ObservedAspect observedAspect(ObservationRegistry observationRegistry) {
+			return new ObservedAspect(observationRegistry);
+		}
+
 	}
 
 	@PostConstruct

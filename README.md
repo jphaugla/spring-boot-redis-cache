@@ -22,6 +22,7 @@ Links:
   - [**Stackoverflow Null Pointer Fix**](https://stackoverflow.com/questions/33083206/cacheevict-with-key-id-throws-nullpointerexception)
   - [**Baeldung Spring Boot Cache with Redis**](https://www.baeldung.com/spring-boot-redis-cache)
   - [**Spring Boot and Redis-SpEL/Caching**](https://ozymaxx.github.io/blog/2020/05/11/redis-springboot-2-en/)
+  - [**Spring Caching with Redis**](https://medium.com/javarevisited/spring-caching-with-redis-dc1e3bdcc552)
   - [**Redisinsight**](https://redis.com/redis-enterprise/redis-insight/)
   - [**OpenAPI 3**](https://springdoc.org/v2/)
   - [**Using Redisinsights**](https://docs.redis.com/latest/ri/using-redisinsight/)
@@ -323,6 +324,9 @@ cd scripts
 ./getByCustID.sh
 ```
 
+### Actuator health and metrics
+[Spring Boot Actuator](https://www.baeldung.com/spring-boot-actuators) is turned on in the [pom.xml](pom.xml)
+Test is out using the [health actuator endpoint](http://localhost:8080/actuator/health) and other documented above
 ## Demo
 
 <div align="center">

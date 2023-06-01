@@ -3,6 +3,7 @@ package com.coderkan.services;
 import java.util.List;
 
 import com.coderkan.models.Customer;
+import org.springframework.cache.annotation.CacheEvict;
 
 public interface CustomerService {
 
@@ -11,6 +12,8 @@ public interface CustomerService {
 	public Customer add(Customer customer);
 
 	public Customer update(Customer customer);
+
+	void evictCache();
 
 	public void delete(long id);
 
