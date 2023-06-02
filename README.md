@@ -1,6 +1,5 @@
 # Spring Boot Redis Cache
 This demonstrates spring boot redis cache.  The main directory caches postgresql and the subdirectory *cassandra* similarily caches cassandra.
-The docker in the spring-cache application in the cassandra directory does not work as there is a failure in the connection to cassandra from java.  So, if running in cassandra, use the local client.  I think the issue is docker networking not working with cassandra driver.
 
 Context:
 
@@ -350,3 +349,11 @@ Test is out using the [health actuator endpoint](http://localhost:8080/actuator/
   <a href="https://www.youtube.com/watch?v=4yr4JLRK6MM"><img src="https://img.youtube.com/vi/4yr4JLRK6MM/0.jpg" alt="Spring Boot + Redis + PostgreSQL Caching"></a>
 </div>
 
+## Troubleshooting
+
+Had an issue with Cassandra with the spring-cache also running on docker.  The spring-cache application could not connect to the cassandra docker image using the image name/hostname.   This connection works by specifying the docker image name in the spring cache environment variable *- SPRING_CASSANDRA_HOST=cassandra1*in [the dockerk-compose](cassandra/docker-compose.yml).   A workaround is:
+*  to use *docker network inspect <network name>* to get the IP for the cassandra host
+* put that IP address into the docker compose *- SPRING_CASSANDRA_HOST=172.24.33.1*
+* restart and it will work
+* change it back to the cassandra1 and it continues to work
+Seems related to docker node seeding but it works fine when the application is outside of docker and points to localhost so not sure root cause
