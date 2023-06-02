@@ -351,9 +351,9 @@ Test is out using the [health actuator endpoint](http://localhost:8080/actuator/
 
 ## Troubleshooting
 
-Had an issue with Cassandra with the spring-cache also running on docker.  The spring-cache application could not connect to the cassandra docker image using the image name/hostname.   This connection works by specifying the docker image name in the spring cache environment variable *- SPRING_CASSANDRA_HOST=cassandra1*in [the dockerk-compose](cassandra/docker-compose.yml).   A workaround is:
-*  to use *docker network inspect <network name>* to get the IP for the cassandra host
+Had an issue with Cassandra with the spring-cache also running on docker.  The spring-cache application could not connect to the cassandra docker image using the image name/hostname.   This connection works by specifying the docker image name in the spring cache environment variable *- SPRING_CASSANDRA_HOST=cassandra1* in [the docker-compose](cassandra/docker-compose.yml).   A workaround is:
+* use *docker network inspect <network name>* to get the IP for the cassandra host
 * put that IP address into the docker compose *- SPRING_CASSANDRA_HOST=172.24.33.1*
 * restart and it will work
 * change it back to the cassandra1 and it continues to work
-Seems related to docker node seeding but it works fine when the application is outside of docker and points to localhost so not sure root cause
+Seems related to cassandra node seeding but it works fine when the application is outside of docker and points to localhost so not sure root cause
