@@ -1,0 +1,35 @@
+version: '3.9'
+services:
+  cassandra1:
+    image: 'bitnami/cassandra:latest'
+    environment:
+      - CASSANDRA_CLUSTER_NAME=test
+      - CASSANDRA_SEEDS=cassandra1
+      - CASSANDRA_PASSWORD_SEEDER=yes
+      - CASSANDRA_USER=cassandra
+      - CASSANDRA_PASSWORD=jph
+    container_name: cassandra1
+    ports:
+      - '9042:9042'
+      - '9160:9160'
+    volumes:
+      - ./cassandra:/bitnami
+
+  spring-cache:
+    image: spring-cache
+    container_name: spring-cache
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/postgres
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=ekoloji
+      - SPRING_REDIS_HOST=cache
+      - SPRING_REDIS_PORT=6379
+      - SPRING_REDIS_PASSWORD=jasonrocks
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - '8080:8080'
+    depends_on:
+      - db
+      - cache
