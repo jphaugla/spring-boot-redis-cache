@@ -6,7 +6,7 @@
 	<parent>
                 <groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.1.0</version>
+		<version>3.1.2</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.coderkan</groupId>
@@ -18,7 +18,7 @@
 	<properties>
 		<java.version>17</java.version>
 		<start-class>com.coderkan.SpringBootRedisCacheApplication</start-class>
-		<version.jedis>4.3.0-m2</version.jedis>
+		<version.jedis>4.4.3</version.jedis>
 	</properties>
 
 	<dependencies>

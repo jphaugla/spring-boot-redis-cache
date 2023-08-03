@@ -19,11 +19,11 @@ services:
       - CASSANDRA_CLUSTER_NAME=test
       - CASSANDRA_SEEDS=cassandra1
       - CASSANDRA_PASSWORD_SEEDER=yes
-      - SPRING_CASSANDRA_USER=cassandra
-      - SPRING_CASSANDRA_PASSWORD=jph
+      - CASSANDRA_USER=cassandra
+      - CASSANDRA_PASSWORD=jph
 #  this is actually hardcoded with SIMPLE Snitch
       - CASSANDRA_DATACENTER=datacenter1
-      - CASSANDRA_HOST=cassandra1
+      - CASSANDRA_HOST cassandra1
     container_name: cassandra1
     hostname: cassandra1
     ports:
@@ -32,26 +32,3 @@ services:
     volumes:
       - ./cassandra:/bitnami
       - ./cassandra_init:/docker-entrypoint-initdb.d
-
-  spring-cache:
-    image: spring-cache
-    container_name: spring-cache
-    hostname: spring-cache
-    environment:
-      - SPRING_CASSANDRA_HOST=172.21.0.2
-      - SPRING_CASSANDRA_PORT=9042
-      - SPRING_CASSANDRA_USER=cassandra
-      - SPRING_CASSANDRA_PASSWORD=jph
-      - SPRING_CASSANDRA_CLUSTER=test
-      - SPRING_CASSANDRA_DATACENTER=datacenter1
-      - SPRING_REDIS_HOST=cache
-      - SPRING_REDIS_PORT=6379
-      - SPRING_REDIS_PASSWORD=jasonrocks
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - '8080:8080'
-    depends_on:
-      - cassandra1
-      - cache

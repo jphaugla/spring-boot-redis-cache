@@ -1,9 +1,13 @@
 # Spring Boot Redis Cache
 This demonstrates spring boot redis cache.  The main directory caches postgresql and the subdirectory *cassandra* similarily caches cassandra.
 
-Context:
+Outline:
 
   - [**Getting Started**](#getting-started)
+  - [**Cachin Patterns**](#caching-patterns)
+    - [Cache-Aside](#cache-aside)
+    - [Write-Through and Write-Behind](#write-behind-and-write-through)
+    - [Read-Through](#read-through) 
   - [**Maven Dependencies**](#maven-dependencies)
   - [**Redis Configuration**](#redis-configuration)
   - [**Spring Service**](#spring-service)
@@ -37,10 +41,42 @@ Links:
 
 ## Getting Started
 
-In this project, I used Redis for caching with Spring Boot.  There are multiple docker containers:  postgres, redis, 
+In this project, Redis is used for caching with Spring Boot.  There are multiple docker containers:  postgres, redis, 
 redisinsight, and the spring boot application.  The subdirectory *cassandra* uses a cassandra container instead of postgres
 When you send any request to get all customers or customer by id, you will wait 3 milliseconds if Redis has no related data.
+A variety of cluster patterns and behaviours can be acheived through this spring cache technique.   So, write behind, write through, read through and cache aside are all possible using the spring cache.
 
+## Caching Patterns
+Using spring boot caching, multiple caching patterns can be successfully used.  
+Code changes to achieve each pattern can be made in [CustomerServiceImpl.java](src/main/java/com/coderkan/services/impl/CustomerServiceImpl.java)
+
+### Cache-Aside
+![Cache Aside](assets/cache-aside.png)
+* The application first checks if the data is available in the cache
+* If the data is not present in the cache
+  * application retrieves the data from the primary data store
+  * application updates the cache 
+  * application returns the data to the caller.
+
+### Write-Behind and Write-Through
+![Write-Behind and Write-Trhough](assets/write-behind.png)
+#### Write-Through
+* Ensures that the cache is always up-to-date by updating the cache whenever the primary data store is updated.
+* application writes data to both the cache and the primary data store
+* ensures cache always contains the latest data, minimizing the chances of stale data.
+
+#### Write-Behind
+* Is an optimization of the write-through pattern.
+* Application writes data to the cache and asynchronously updates the primary data store
+* improves the application's write performance-no need to wait for primary data store to acknowledge the write operation.
+* this could be improved by writing to a redis stream
+  * redis stream consumer spring java job would make write to primary data store
+
+### Read-Through
+![Read-Through](assets/read-through.png)
+* cache code is responsible for fetching the data from primary data store when cache miss occurs
+* Simplifies application code, application only interacts with the cache 
+* No need to handle cache misses explicitly in application logic
 
 ## Maven Dependencies
 
@@ -49,6 +85,11 @@ I changed this from lettuce to jedis
 <dependency>
 	<groupId>org.springframework.boot</groupId>
 	<artifactId>spring-boot-starter-data-redis</artifactId>
+</dependency>
+<dependency>
+        <groupId>redis.clients</groupId>
+        <artifactId>jedis</artifactId>
+        <version>${version.jedis}</version>
 </dependency>
 
 ```
@@ -122,7 +163,7 @@ These are:
 * `@CachceConfig`
 	
 Updated this code on the CacheEvict as it did not work. [Stackoverflow link](https://stackoverflow.com/questions/33083206/cacheevict-with-key-id-throws-nullpointerexception)
-Next, I changed this to do a cacheput on add
+Next, I changed this to do a cacheput on add so behaves like [write-through](#write-through)
 ```java
         @Cacheable
 	@Override
@@ -258,13 +299,31 @@ services:
 ## Build & Run Application
 
 * Build Java Jar.
+Must have the docker instances for Postgres and Redis running or the TESTS will fail after the *mvn clean package*
 
+if cassandra the seed host doesn't work, can skip the test on *mvn clean package* or do the [troubleshooting](#troubleshooting)
 ```shell
  $ source scripts/setEnv.sh
+#  if doing cassandra then must do a cd cassandra
+ $ cd cassandra   # only if doing cassandra and not postgres
+ $ docker-compose -f docker-compose-no-app.yml up -d 
+# if doing cassandra, struggling to get test code to find contact point so do test skip 
+# or can do troubleshooting step
+ $ mvn clean package -Dmaven.test.skip
+# for postgres, this works fine
  $ mvn clean package
 ```
 
+
 *  Docker Compose Build and Run
+
+Must ensure shutdown any previously started docker instances (if initially ran the image locally)
+* probably will need this [troubleshooting step](#troubleshooting)
+```shell
+#  if doing cassandra then must do a cd cassandra
+ $ cd cassandra   # only if doing cassandra and not postgres
+ $ docker-compose -f docker-compose-no-app.yml down
+```
 
 ```shell
 $ docker-compose build --no-cache
@@ -273,21 +332,23 @@ $ docker-compose up -d
 ```
 
 ## Use redisinsight
-bring up redisinsight using [link to redisinsight](https://localhost:8001)
+bring up redisinsight using [link to redisinsight](http://localhost:8001)
 This [redisinsight documentation](https://docs.redis.com/latest/ri/using-redisinsight/) is helpful  
 
 ![redisinsight](assets/redisinsightConnection.png)
 
 When adding the database use *cache* and not *localhost* as the server name as it will resolve with the docker network
+Default password set in the docker-compose file is *jasonrocks*
 
 ## Access postgreSQL
 ```bash
 docker exec -it db bash
 psql -U postgres -W
-# TIP:  find the password for the postgres database in the docker-compose file
+# TIP:  find the password for the postgres database in the docker-compose file it is *ekoloji*
 ```
 ![psql](assets/psql.png)
 * see simple psql interaction above
+* note:  data won't be initially populated - some insert commands below
 ## Access cassandra
 This is if using the *cassandra* subdirectory
 ```bash
@@ -352,8 +413,14 @@ Test is out using the [health actuator endpoint](http://localhost:8080/actuator/
 ## Troubleshooting
 
 Had an issue with Cassandra with the spring-cache also running on docker.  The spring-cache application could not connect to the cassandra docker image using the image name/hostname.   This connection works by specifying the docker image name in the spring cache environment variable *- SPRING_CASSANDRA_HOST=cassandra1* in [the docker-compose](cassandra/docker-compose.yml).   A workaround is:
-* use *docker network inspect <network name>* to get the IP for the cassandra host
-* put that IP address into the docker compose *- SPRING_CASSANDRA_HOST=172.24.33.1*
+* use docker network to get the IP for the cassandra host
+```bash
+export SPRING_CASSANDRA_HOST=`docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' cassandra1
+```
+* put that IP address into the docker compose for the spring-cache container *- SPRING_CASSANDRA_HOST=172.24.33.1*
 * restart and it will work
+```bash
+docker-compose start spring-cache
+```
 * change it back to the cassandra1 and it continues to work
 Seems related to cassandra node seeding but it works fine when the application is outside of docker and points to localhost so not sure root cause

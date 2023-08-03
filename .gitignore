@@ -31,3 +31,11 @@ build/
 
 ### VS Code ###
 .vscode/
+
+###  ds_store
+**/.DS_Store
+
+###  docker directories
+/cassandra/cassandra
+/cassandra/redis_data/
+/redis_data
