@@ -337,7 +337,7 @@ This [redisinsight documentation](https://docs.redis.com/latest/ri/using-redisin
 
 ![redisinsight](assets/redisinsightConnection.png)
 
-When adding the database use *cache* and not *localhost* as the server name as it will resolve with the docker network
+When adding the database, either *cache* or *localhost* as the server name will resolve with the docker network because redisinsight is in the same container as redis
 Default password set in the docker-compose file is *jasonrocks*
 
 ## Access postgreSQL
