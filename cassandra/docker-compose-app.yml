@@ -1,0 +1,26 @@
+version: '3.9'
+
+services:
+
+  spring-cache:
+    image: spring-cache
+    container_name: spring-cache
+    hostname: spring-cache
+    environment:
+      - SPRING_CASSANDRA_HOST=cassandra1
+      - SPRING_CASSANDRA_PORT=9042
+#      - SPRING_CASSANDRA_USER=cassandra
+#      - SPRING_CASSANDRA_PASSWORD=jph
+      - SPRING_CASSANDRA_CLUSTER=redis
+      - SPRING_CASSANDRA_DATACENTER=datacenter1
+      - SPRING_REDIS_HOST=cache
+      - SPRING_REDIS_PORT=6379
+      - SPRING_REDIS_PASSWORD=jasonrocks
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - '8080:8080'
+    depends_on:
+      - cassandra1
+      - redis

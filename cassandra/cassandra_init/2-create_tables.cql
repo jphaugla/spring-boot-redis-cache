@@ -1,7 +1,3 @@
--- Here, you can execute any CQL commands, e.g.
-
-CREATE KEYSPACE if not exists customer  WITH REPLICATION = {'class': 'SimpleStrategy', 'replication_factor': 1};
-
 use customer;
 
 CREATE TABLE if not exists customer (
@@ -13,4 +9,11 @@ CREATE TABLE if not exists customer (
     postalCode text,
     country text,
     PRIMARY KEY (id)
+); 
+
+CREATE TABLE if not exists pageviews (
+    userid text,
+    pageid text,
+    viewtime timestamp,
+    PRIMARY KEY ((userid),pageid)
 ); 
